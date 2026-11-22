@@ -1,0 +1,67 @@
+name: windows-setup
+
+# Gera o instalador do Windows (GoLiveBypass-Setup-<versao>.exe) a partir do exe portable
+# da release oficial e publica numa release "setup-v<versao>" DESTE repositorio.
+# Roda uma vez por dia: quando sai versao estavel nova em bezumiya/GoLiveBypass, o
+# instalador novo aparece sozinho. O app instalado se atualiza pelo updater proprio.
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release oficial (ex.: v2.0.18). Vazio = ultima estavel."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descobrir versao
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          $tag = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { gh release view --repo bezumiya/GoLiveBypass --json tagName -q .tagName }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') { throw "Tag '$tag' nao e estavel." }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          gh release view "setup-$tag" --repo "${{ github.repository }}" *> $null
+          "existe=$([int]($LASTEXITCODE -eq 0))" >> $env:GITHUB_OUTPUT
+          $global:LASTEXITCODE = 0
+
+      - name: Instalar NSIS
+        if: steps.ver.outputs.existe == '0'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis -y --no-progress
+          }
+
+      - name: Gerar instalador
+        if: steps.ver.outputs.existe == '0'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./installer/windows-setup/build-setup.ps1 -Tag "${{ steps.ver.outputs.tag }}"
+
+      - name: Publicar
+        if: steps.ver.outputs.existe == '0'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $ver = $tag.TrimStart('v')
+          $file = "installer/windows-setup/dist/GoLiveBypass-Setup-$ver.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+          "$hash  GoLiveBypass-Setup-$ver.exe" | Out-File -Encoding ascii "$file.sha256"
+          $notes = "Instalador do GoLiveBypass $ver para Windows (por usuario, sem administrador).`n`nInstala o exe oficial de https://github.com/bezumiya/GoLiveBypass/releases/tag/$tag em %LOCALAPPDATA%\Programs\GoLiveBypass, com atalhos, desinstalador e inicializacao com o Windows por tarefa agendada. O app continua se atualizando sozinho pelas releases oficiais.`n`nSHA-256: $hash"
+          gh release create "setup-$tag" $file "$file.sha256" --repo "${{ github.repository }}" --title "Instalador Windows $ver" --notes $notes --target "${{ github.sha }}"

@@ -60,6 +60,7 @@ O túnel cobre o processo do Discord inteiro — gateway, login, voz, vídeo e a
 1. Vá na **[última release](https://github.com/bezumiya/GoLiveBypass/releases/latest)** aqui no GitHub.
 2. Baixe o arquivo da sua plataforma, na lista no fim da página:
    - **Windows:** `GoLiveBypass-*.exe` (portátil, roda direto sem instalar)
+   - **Windows (instalador):** `GoLiveBypass-Setup-*.exe`, nas [releases deste fork](https://github.com/thize/GoLiveBypass/releases). Instala numa pasta fixa, cria atalhos e desinstalador e inicia com o Windows abrindo o Discord. Veja [installer/windows-setup](installer/windows-setup/README.md).
    - **Linux:** `GoLiveBypass-*.AppImage`
 3. Abra o arquivo que você acabou de baixar.
 
