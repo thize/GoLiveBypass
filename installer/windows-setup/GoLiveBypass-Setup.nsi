@@ -75,7 +75,7 @@ Function ${UN}EsperarAppFechado
   retry:
     ; O portable sobe como "<nome do exe>" (o stub) e "GoLiveBypass.exe" (o app extraido
     ; no %TEMP%): qualquer processo GoLiveBypass* conta, inclusive um portable antigo.
-    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "if (Get-Process -Name GoLiveBypass* -ErrorAction SilentlyContinue) { exit 10 } else { exit 0 }"'
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "if (Get-Process | Where-Object { $$_.ProcessName -match '^GoLiveBypass(-[0-9][0-9.]*)?$$' }) { exit 10 } else { exit 0 }"'
     Pop $0
     Pop $1
     ${If} $0 == 10
